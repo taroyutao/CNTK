@@ -1041,6 +1041,13 @@ namespace CNTK
                             }
                             break;
                         }
+                        case PrimitiveOpType::TopK:
+                        {
+                            assert(m_inputs.size() == 1);
+                            outputShape = m_inputs[0].Shape();
+                            outputShape[0] = m_attributes[PrimitiveFunction::AttributeNameNumItems].Value<size_t>();
+                            break;
+                        }
                         default:
                             LogicError("Specified Primitive Function op %S is not supported", PrimitiveOpTypeName(m_op).c_str());
                             break;
@@ -1059,6 +1066,11 @@ namespace CNTK
                     auto maskOutput = OutputVariable({ NDShape::FreeDimension }, outputDataType, outputDynamicAxes, /*needsGradient =*/ false, Name().empty() ? L"" : Name() + L"_UnpackSequenceMask");
                     outputs.push_back(maskOutput);
                 }
+            }
+            else if (m_op == PrimitiveOpType::TopK)
+            {
+                auto IndexOutput = OutputVariable(outputShape, outputDataType, outputDynamicAxes, /*needsGradient =*/ false, Name().empty() ? L"" : Name() + L"_TopKIndexMask");
+                outputs.push_back(IndexOutput);
             }
         }
     }

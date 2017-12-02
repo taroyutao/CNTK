@@ -1725,6 +1725,26 @@ def hardmax(x, name=''):
 
 
 @typemap
+def top_k(x, k, name=''):
+    '''
+    TBD
+
+    Example:
+        TBA
+
+    Args:
+        x: numpy array or any :class:`~cntk.ops.functions.Function` that outputs a tensor
+        k: number of top items to return
+        name (str): the name of the Function instance in the network
+    Returns:
+        :class:`~cntk.ops.functions.Function`
+    '''
+    from cntk.cntk_py import top_k
+    x = sanitize_input(x)
+    return top_k(x, k, name)
+
+
+@typemap
 def exp(x, name=''):
     '''
     Computes the element-wise exponential of ``x``:

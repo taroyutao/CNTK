@@ -1287,6 +1287,37 @@ namespace CNTK
         return UnaryOp(PrimitiveOpType::Hardmax, operand, Dictionary(), name);
     }
 
+    FunctionPtr TopK(const Variable& operand, size_t k, const std::wstring& name)
+    {
+        auto additionalProperties = Dictionary();
+        additionalProperties[PrimitiveFunction::AttributeNameAxis] = Axis::Axis(0);
+        additionalProperties[PrimitiveFunction::AttributeNameNumItems] = k;
+        return UnaryOp(PrimitiveOpType::TopK, operand, std::move(additionalProperties), name);
+    }
+
+
+    FunctionPtr TopK(const Variable& operand, size_t k, const Axis& axis, const std::wstring& name)
+    {
+        if (!axis.IsStaticAxis())
+            LogicError("TopK operation only supports a single static axis.");
+
+        if (axis.StaticAxisIndex() == 0)
+            return TopK(operand, k, name);
+        else
+        {
+            auto additionalProperties = Dictionary();
+            additionalProperties[PrimitiveFunction::AttributeNameAxis] = axis;
+            additionalProperties[PrimitiveFunction::AttributeNameNumItems] = k;
+
+            auto operandPlaceholder = PlaceholderVariable();
+            auto firstAxis = Axis::Axis(0);
+            auto swapped = TransposeAxes(operandPlaceholder, firstAxis, axis);
+            auto topkSwapped = TopK(swapped, k, name);
+            auto result = TransposeAxes(topkSwapped, firstAxis, axis);
+            return AsBlock(std::move(result), { { operandPlaceholder, operand } }, std::move(additionalProperties), L"TopK", name);
+        }
+    }
+
     FunctionPtr TransposeAxes(const Variable& operand, const Axis& axis1, const Axis& axis2, const std::wstring& name)
     {
         auto additionalProperties = Dictionary();
