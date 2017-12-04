@@ -12,7 +12,7 @@ from __future__ import division
 import numpy as np
 import cntk as C
 import pytest
-from .ops_test_utils import unittest_helper, _test_unary_op, _test_binary_op, AA, precision, PRECISION_TO_TYPE
+from .ops_test_utils import unittest_helper, _test_unary_op, _test_binary_op, AA, precision, PRECISION_TO_TYPE, cntk_device
 
 TENSORS = [
     ([12.3, -12.3]),
@@ -107,3 +107,44 @@ def test_input_variable():
     assert sequence_i.name == 'sequence_i'
     assert len(sequence_i.dynamic_axes)==2
 
+
+@pytest.mark.parametrize("axis", [-2, -1])
+def test_topk(axis, device_id, precision):
+    def sliceit(x, axis):
+        if axis not in (-2, -1):
+            raise ValueError("unknown axis %d"%axis)
+        if axis == -1:
+            return x[..., -1:-4:-1]
+        elif axis == -2:
+            return x[..., -1:-4:-1, :]
+
+    def check_topk_values_and_indices(top, y, x):
+        vals = top[y.outputs[0]]
+        idxs = top[y.outputs[1]]
+        for vi,xi in zip(vals, x):
+            assert np.allclose(vi, sliceit(np.sort(xi, axis=axis), axis))
+        for idxi,xi in zip(idxs, x):
+            assert np.allclose(idxi, sliceit(np.argsort(xi, axis=axis), axis))
+
+    dt = PRECISION_TO_TYPE[precision]
+    dev = cntk_device(device_id)
+
+    p = C.parameter((10, 20, 30), dtype=dt)
+    np.random.seed(90210)
+    p.value = p.value + np.random.randn(*p.shape)
+    y = C.top_k(p, 3, axis=axis)
+    top = y.eval({}) # for now run this on the device where the parameter is
+    assert np.allclose(top[y.outputs[0]], sliceit(np.sort(p.value, axis=axis), axis))
+    assert np.allclose(top[y.outputs[1]], sliceit(np.argsort(p.value, axis=axis), axis))
+
+    q = C.input_variable((5, 6), dtype=dt)
+    q0 = np.random.randn(2, 5, 6).astype(dt)
+    y = C.top_k(q, 3, axis=axis)
+    top = y.eval({q:q0}, device=dev)
+    check_topk_values_and_indices(top, y, q0)
+
+    q = C.sequence.input_variable((5, 6), dtype=dt)
+    q0 = [np.random.randn(4-i, 5, 6).astype(dt) for i in range(2)]
+    y = C.top_k(q, 3, axis=axis)
+    top = y.eval({q:q0}, device=dev)
+    check_topk_values_and_indices(top, y, q0)

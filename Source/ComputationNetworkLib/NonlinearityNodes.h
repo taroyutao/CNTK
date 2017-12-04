@@ -446,6 +446,81 @@ public:
 template class HardmaxNode<float>;
 template class HardmaxNode<double>;
 
+
+
+template <class ElemType>
+class TopKNode : public ComputationNode<ElemType>, public MultiOutputNode<ElemType>, public NumInputs<1>
+{
+    typedef ComputationNode<ElemType> Base; UsingComputationNodeMembersBoilerplate;
+    static const std::wstring TypeName() { return L"TopK"; }
+
+public:
+    TopKNode(DEVICEID_TYPE deviceId, const wstring& name) : Base(deviceId, name), MultiOutputNode<ElemType>(2) {}
+    TopKNode(DEVICEID_TYPE deviceId, const wstring& name, size_t k, size_t dim)
+        : Base(deviceId, name), MultiOutputNode<ElemType>(2), m_k(k), m_dim(dim)
+    {}
+
+    virtual void RequestMatricesBeforeForwardProp(MatrixPool& matrixPool) override
+    {
+        Base::RequestMatricesBeforeForwardProp(matrixPool);
+        RequestMatrixFromPool(m_sortedIndices, matrixPool);
+    }
+
+    virtual void ReleaseMatricesAfterForwardProp(MatrixPool& matrixPool) override
+    {
+        Base::ReleaseMatricesAfterForwardProp(matrixPool);
+        ReleaseMatrixToPool(m_sortedIndices, matrixPool);
+    }
+
+    virtual void /*ComputationNode::*/ ForwardProp(const FrameRange& fr) override
+    {
+#ifdef _MSC_VER 
+        auto& outputValuePtrRef = this->ValuePtrRef();
+        auto& inputValuePtrRef = Input(0)->ValuePtrRef();
+#else
+        auto& outputValuePtrRef = this->template ValuePtrRef();
+        auto& inputValuePtrRef = Input(0)->template ValuePtrRef();
+#endif
+        auto&& topkOutput = outputValuePtrRef->Reshaped(m_k, outputValuePtrRef->GetNumElements() / m_k);
+        auto&& topkInput = inputValuePtrRef->Reshaped(m_dim, inputValuePtrRef->GetNumElements() / m_dim);
+        topkInput.VectorMax(*m_sortedIndices, topkOutput, true, m_k);
+        m_outputsValue[1]->SetValue(m_sortedIndices->Reshaped(outputValuePtrRef->GetNumRows(), outputValuePtrRef->GetNumCols()));
+    }
+
+    virtual void /*ComputationNode::*/ BackpropTo(const size_t inputIndex, const FrameRange& fr) override
+    {
+        // top k is non-differentiable, so do nothing here
+    }
+
+    virtual bool OutputUsedInComputingInputNodesGradients() const override { return false; }
+    virtual bool InputUsedInComputingInputNodesGradients(size_t childIndex) const override { return false; }
+
+    virtual void Validate(bool isFinalValidationPass) override
+    {
+        assert(m_inputs.size() == 1);
+        ComputationNodeBase::Validate(isFinalValidationPass);
+        InferMBLayoutFromInputsForStandardCase(isFinalValidationPass);
+
+        TensorShape inputShape = Input(0)->GetSampleLayout();
+        SmallVector<size_t> outDims = inputShape.GetDims();
+        outDims[0] = m_k;
+        auto outShape = TensorShape(outDims);
+        SetDims(outShape, Input(0)->HasMBLayout());
+        this->m_outputsMBLayout[1] = Input(0)->GetMBLayout();
+        this->m_outputsShape[1] = outShape;
+    }
+
+private:
+    shared_ptr<Matrix<ElemType>> m_sortedIndices;
+    size_t m_k;
+    size_t m_dim;
+};
+
+template class TopKNode<float>;
+template class TopKNode<double>;
+
+
+
 // -----------------------------------------------------------------------
 // If (flag, ifValue, elseValue)
 // -----------------------------------------------------------------------

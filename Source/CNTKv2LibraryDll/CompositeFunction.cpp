@@ -683,6 +683,16 @@ namespace CNTK
                 case PrimitiveOpType::Hardmax:
                     computationNodePtr = New<HardmaxNode<ElementType>>(network->GetDeviceId(), internalNodeName);
                     break;
+                case PrimitiveOpType::TopK:
+                {
+                    auto k = functionConfig[PrimitiveFunction::AttributeNameNumItems].Value<size_t>();
+                    auto inputShape = functionInputs[0].Shape();
+                    size_t dim = inputShape.Rank() > 0 ? inputShape[0] : 1;
+                    if (k > dim)
+                        CNTK::LogicError("TopK operation: k (=%zd) is larger than the size of the input tensor (=%zd) along the specified axis.", k, dim);
+                    computationNodePtr = New<TopKNode<ElementType>>(network->GetDeviceId(), internalNodeName, k, dim);
+                    break;
+                }
                 case PrimitiveOpType::StableSigmoid:
                     computationNodePtr = New<StableSigmoidNode<ElementType>>(network->GetDeviceId(), internalNodeName);
                     break;
