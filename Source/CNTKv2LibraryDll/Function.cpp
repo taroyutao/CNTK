@@ -1290,7 +1290,7 @@ namespace CNTK
     FunctionPtr TopK(const Variable& operand, size_t k, const std::wstring& name)
     {
         auto additionalProperties = Dictionary();
-        additionalProperties[PrimitiveFunction::AttributeNameAxis] = Axis::Axis(0);
+        additionalProperties[PrimitiveFunction::AttributeNameAxis] = Axis(0);
         additionalProperties[PrimitiveFunction::AttributeNameNumItems] = k;
         return UnaryOp(PrimitiveOpType::TopK, operand, std::move(additionalProperties), name);
     }
@@ -1310,7 +1310,7 @@ namespace CNTK
             additionalProperties[PrimitiveFunction::AttributeNameNumItems] = k;
 
             auto operandPlaceholder = PlaceholderVariable();
-            auto firstAxis = Axis::Axis(0);
+            auto firstAxis = Axis(0);
             auto swapped = TransposeAxes(operandPlaceholder, firstAxis, axis);
             auto topkSwapped = TopK(swapped, k, name);
             auto outputs = topkSwapped->Outputs();
