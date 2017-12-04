@@ -484,7 +484,7 @@ public:
         auto&& topkOutput = outputValuePtrRef->Reshaped(m_k, outputValuePtrRef->GetNumElements() / m_k);
         auto&& topkInput = inputValuePtrRef->Reshaped(m_dim, inputValuePtrRef->GetNumElements() / m_dim);
         topkInput.VectorMax(*m_sortedIndices, topkOutput, true, m_k);
-        m_outputsValue[1]->SetValue(m_sortedIndices->Reshaped(outputValuePtrRef->GetNumRows(), outputValuePtrRef->GetNumCols()));
+        this->m_outputsValue[1]->SetValue(m_sortedIndices->Reshaped(outputValuePtrRef->GetNumRows(), outputValuePtrRef->GetNumCols()));
     }
 
     virtual void /*ComputationNode::*/ BackpropTo(const size_t inputIndex, const FrameRange& fr) override
