@@ -1313,7 +1313,10 @@ namespace CNTK
             auto firstAxis = Axis::Axis(0);
             auto swapped = TransposeAxes(operandPlaceholder, firstAxis, axis);
             auto topkSwapped = TopK(swapped, k, name);
-            auto result = TransposeAxes(topkSwapped, firstAxis, axis);
+            auto outputs = topkSwapped->Outputs();
+            auto topkValues = TransposeAxes(outputs[0], firstAxis, axis);
+            auto topkIndices = TransposeAxes(outputs[1], firstAxis, axis);
+            auto result = Combine({ topkValues , topkIndices });
             return AsBlock(std::move(result), { { operandPlaceholder, operand } }, std::move(additionalProperties), L"TopK", name);
         }
     }
