@@ -1736,7 +1736,6 @@ def top_k(x, k, axis=-1, name=''):
     Example:
         >>> x = C.input_variable(10)
         >>> y = C.top_k(-x * C.log(x), 3)
-        >>> top = y.eval({x:x0})
         >>> x0 = np.arange(10,dtype=np.float32)*0.1
         >>> top = y.eval({x:x0})
         >>> top_values = top[y.outputs[0]]
