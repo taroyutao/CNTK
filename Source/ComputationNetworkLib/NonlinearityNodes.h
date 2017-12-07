@@ -496,9 +496,13 @@ public:
         // Backpropagation works the same way as for other nodes that take top element(s) such as max pooling.
         // The values that are not selected get a gradient of zero, otherwise the gradient is copied to the
         // positions that were responsible for the top values. This is a scatter operation.
-
-        auto&& inputGradient = InputRef(0).GradientPtrRef();
+#ifdef _MSC_VER 
+        auto&& inputGradient = Input(0)->GradientPtrRef();
         auto&& outputGradient = GradientPtrRef();
+#else
+        auto&& inputGradient = Input(0)->template GradientPtrRef();
+        auto&& outputGradient = this->template GradientPtrRef();
+#endif
 
         auto&& reshapedInputGradient = inputGradient->Reshaped(1, inputGradient->GetNumElements());
         auto&& reshapedOutputGradient = outputGradient->Reshaped(1, outputGradient->GetNumElements());
@@ -510,11 +514,12 @@ public:
         auto numCols = m_sortedIndices->GetNumCols();
         if (numCols != 1)
         {
-            auto dim = Input(0)->GetSampleLayout().GetDimPadded(0);
-            auto tmp = make_unique<ElemType[]>(numCols);
-            std::generate(&tmp[0], &tmp[numCols], [i = ElemType(0), dim]() mutable { auto ret = i; i += dim; return ret; });
             CreateMatrixIfNull(m_steps);
-            m_steps->SetValue(1, numCols, this->m_deviceId, &tmp[0]);
+            auto dim = Input(0)->GetSampleLayout().GetDimPadded(0);
+            auto tmp = new ElemType[numCols];
+            std::generate(tmp, tmp + numCols, [i = ElemType(0), dim]() mutable { auto ret = i; i += dim; return ret; });
+            m_steps->SetValue(1, numCols, this->m_deviceId, tmp);
+            delete[] tmp;
             m_sortedIndices->ScaleAndAdd(ElemType(1), *m_steps, *m_sortedIndices);
         }
         reshapedInputGradient.DoScatterColumnsOf(ElemType(1), m_sortedIndices->Reshaped(1, m_sortedIndices->GetNumElements()), reshapedOutputGradient, ElemType(1));
